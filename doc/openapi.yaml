@@ -1,0 +1,621 @@
+openapi: 3.0.0
+info:
+  description: "Vigilo Backend"
+  version: 0.0.20
+  title: Vigilo Backend
+  contact:
+    url: https://vigilo.city/fr/
+
+servers:
+  - url: https://localhost:8000
+    description: Test server for local development
+    
+tags:
+  - name: user
+    description: "Gestion des utilisateurs, ACL"
+  - name: observation
+    description: "Gestion des observations et de la modération"
+  - name: configuration
+    description: "Gestion des catégories, du scope, ..."
+
+paths:
+  /acl.php:
+    get:
+      tags:
+        - user
+      summary: "Vérification ACL"
+      description: "Retourne le role d'un utilisateur"
+      operationId: getAcl
+      parameters:
+        - name: key
+          in: query
+          required: true
+          description: "Clé privé de l'utilisateur"
+          schema:
+            type : string
+      responses:
+        "200":
+          description: "Utilisateur valide, retourne le rôle correspondant à la clé (admin)"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  role:
+                    type: string 
+
+  /get_categories_list:
+    get:
+      tags:
+        - configuration
+      summary: "Liste des catégories "
+      description: "Retourne les informations des catégories"
+      operationId: getCategories
+      responses:
+        "200":
+          description: "Informations des catégories"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  catid:
+                    type: string
+                  catname:
+                    type: string
+
+  /get_scope.php:
+    get:
+      tags:
+        - configuration
+      summary: "Informations du scope"
+      description: "Retourne les informations d'un scope"
+      operationId: getScope
+      parameters:
+        - name: scopeName
+          in: query
+          required: true
+          description: "Nom du scope"
+          schema:
+            type : string
+      responses:
+        "200":
+          description: "Informations du scope"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Scope'
+
+  /generate_panel.php:
+    get:
+      tags:
+        - observation
+      summary: "Panel de l'observation"
+      description: "Retourne une image contenant les informations d'une observation"
+      operationId: getPanel
+      parameters:
+        - name: token
+          in: query
+          required: true
+          description: "Token de l'observation"
+          schema:
+            type : string
+        - name: s
+          in: query
+          required: false
+          description: "Largeur de l'image"
+          schema:
+            type : string
+        - name: key
+          in: query
+          required: false
+          description: "Clé d'admin pour une visualisation non pixelisée"
+          schema:
+            type : string
+        - name: secretid
+          in: query
+          required: false
+          description: "Clé secrete de l'observation pour une visualisation non pixelisée"
+          schema:
+            type : string
+      responses:
+        "200":
+          description: "Panel de l'observation"
+          content:
+            image/jpeg:
+             schema: 
+               type: string
+               format: binary
+
+  /get_photo:
+    get:
+      tags:
+        - observation
+      summary: "Photo de l'observation"
+      description: "Retourne la photo originale de l'observation"
+      operationId: getPhoto
+      parameters:
+        - name: token
+          in: query
+          required: true
+          description: "Token de l'observation"
+          schema:
+            type : string
+        - name: key
+          in: query
+          required: true
+          description: "Clé privé de l'utilisateur"
+          schema:
+            type : string
+        - name: type
+          in: query
+          required: false
+          description: "Type d'image (resolution/obs)"
+          schema:
+            type : string
+      responses:
+        "200":
+          description: "Image de l'observation"
+          content:
+            image/jpeg:
+             schema: 
+               type: string
+               format: binary
+
+  /get_issues.php:
+    get:
+      tags:
+        - observation
+      summary: "Rechercher des observations"
+      description: "Retourne une liste d'observation correspondantes aux critères"
+      operationId: getIssues
+      parameters:
+        - name: scope
+          in: query
+          required: true
+          description: "Identifiant du scope (nom)"
+          schema:
+            type : string
+        - name: c
+          in: query
+          required: false
+          description: "Filtrer sur une catégorie"
+          schema:
+            type : integer
+        - name: t
+          in: query
+          required: false
+          description: "Filtrer sur une date (timestamp)"
+          schema:
+            type : integer
+        - name: since
+          in: query
+          required: false
+          description: "nombre d'unités pour le filtre relatif sur la date - requis si `since_unit` est fourni"
+          schema:
+            type : integer
+        - name: since_unit
+          in: query
+          required: false
+          description: "Unité pour le filtre relatif sur la date - requis si `since` est fourni"
+          schema:
+            type : string
+            enum: [day, week, month, year]
+        - name: status
+          in: query
+          required: false
+          description: "Filtrer sur un statut d'observation"
+          schema:
+            $ref: '#/components/schemas/ObservationStatus'
+        - name: token
+          in: query
+          required: false
+          description: "Filtrer sur un token d'observation"
+          schema:
+            type : string
+        - name: approved
+          in: query
+          required: false
+          description: "Filtrer sur l'approbation"
+          schema:
+            type : integer
+        - name: cityid
+          in: query
+          required: false
+          description: "Filtrer sur la ville"
+          schema:
+            type : integer
+        - name: lat
+          in: query
+          required: false
+          description: "Filtre géospacial - indication de la latitude (`long` et `radius` doivent être spécifiés)"
+          schema:
+            type : string
+        - name: long
+          in: query
+          required: false
+          description: "Filtre géospacial - indication de la longitude (`lat` et `radius` doivent être spécifiés)"
+          schema:
+            type : string
+        - name: radius
+          in: query
+          required: false
+          description: "Filtre géospacial - indication du radius en mètres  (`lat` et ``long doivent être spécifiés)"
+          schema:
+            type : integer
+        - name: tokenfilters
+          in: query
+          required: false
+          description: "Se combine avec `token` pour afficher les observations similaires avec les filtres distance, categorie et/ou address"
+          schema:
+            type : string
+        - name: fdistance
+          in: query
+          required: false
+          description: "Distance en mètre, à renseigner si distance est utilisé - nécessite de fournir `token` et `tokenfilters`."
+          schema:
+            type : string
+        - name: key
+          in: query
+          required: false
+          description: "Clé d'admin pour donner accès à toutes les observations"
+          schema:
+            type : string
+        - name: cityfield
+          in: query
+          required: false
+          description: "Affiche la ville dans un champs dédié plutôt que dans l'adresse"
+          schema:
+            type : boolean
+        - name: count
+          in: query
+          required: false
+          description: "Limite le nombre d'observation"
+          schema:
+            type : integer
+        - name: offset
+          in: query
+          required: false
+          description: "Démarrage le nombre d'occurence en décallé"
+          schema:
+            type : integer
+        - name: format
+          in: query
+          required: false
+          description: "Format de retour"
+          schema:
+            type : string
+            enum: [json, csv, geojson]
+      responses:
+        "200":
+          description: "Liste des observations correspondantes aux filtres"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Observation"
+
+  /add_image.php:
+    post:
+      tags:
+        - observation
+      summary: "Ajout d'une image"
+      description: "Ajout d'une image pour une observation"
+      operationId: addImage
+      parameters:
+        - name: token
+          in: query
+          required: true
+          description: "Token de l'observation"
+          schema:
+            type : string
+        - name: secretid
+          in: query
+          required: true
+          description: "Clé secrète de l'observation"
+          schema:
+            type : string
+        - name: type
+          in: query
+          required: false
+          description: "Type d'image, pour l'observation ou la résolution"
+          schema:
+            type : string
+            enum: [obs, resolution]
+            default: obs
+      requestBody:
+        description: Optional description in *Markdown*
+        required: true
+        content:
+          image/jpeg:
+            schema:
+              type: string
+              description: "Flux de l'image en JPEG si `method` vaut 'stdin'"
+              format: binary
+          application/x-www-form-urlencoded:
+            schema:
+              type: string
+              description: "Image JPEG encodée en base64"
+              format: binary
+      responses:
+        "200":
+          description: "Retourne les informations d'identification de l'observation"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ObservationStatus'
+  /approve.php:
+    post:
+      tags:
+        - observation
+      summary: "Approuver une observation"
+      description: "Approuver l'observation"
+      operationId: approve
+      parameters:
+        - name: key
+          in: query
+          required: true
+          description: "Clé privé de l'utilisateur"
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              properties:
+                token:
+                  type: string
+                  description: "Token de l'observation - obligatoire en cas de modification"
+                approved:
+                  type: integer
+                  enum: [0, 1, 2]
+                  description: >
+                    Identifiant du statut d'approbation
+                     * 0: à approuver
+                     * 1: approuvé
+                     * 2: désapprouvé
+      responses:
+        "200":
+          description: "Retourne les informations d'identification de l'observation"
+
+  /create_resolution.php:
+    post:
+      tags:
+        - observation
+      summary: "Créer une résolution"
+      description: "Créer une résolution"
+      operationId: createResolution
+      parameters:
+        - name: key
+          in: query
+          required: true
+          description: "Clé privé de l'utilisateur"
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              properties:
+                time:
+                  type: integer
+                  description: "Timestamp format Unix"
+                tokenlist:
+                  type: string
+                  description: "Liste, séparée par une virgule des tokens d'observations"
+                  example: "1,2,3"
+                comment:
+                  type: string
+                  description: "Commentaire de résolution (max 50 chars)"
+                  maximum: 50
+                version:
+                  type: string
+                  description: "Version du client"
+              required:
+                - time
+                - tokenlist
+      responses:
+        "200":
+          description: "Retourne les informations d'identification de la résolution"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    description: "Retourne le token généré"
+                  secretid:
+                    type: string
+                    description: "Retourne la clé secrete"
+
+  /delete.php:
+    get:
+      tags:
+        - observation
+      summary: "Supprimer une observation"
+      description: "Supprimer l'observation"
+      operationId: deleteObservation
+      parameters:
+        - name: key
+          in: query
+          description: "Clé privé de l'utilisateur - requis si `secretid` n'est pas fourni"
+          schema:
+            type : string
+        - name: token
+          in: query
+          description: "Token de l'observation"
+          required: true
+          schema:
+            type : string
+        - name: secretid
+          in: query
+          description: "Clé secrète de l'observation - requis si `key` n'est pas fourni"
+          schema:
+            type : string
+      responses:
+        "200":
+          description: "Retourne les informations d'identification de l'observation"
+
+  /maps/{token}_zoom.jpg:
+    get:
+      tags:
+        - observation
+      summary: "Obtenir carte en cache"
+      description: "Obtenir carte en cache"
+      operationId: getMapFromCache
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "Retourne l'image"
+
+  /create_issue.php:
+    post:
+      tags:
+        - observation
+      summary: "Créer une observation"
+      description: "Créer une nouvelle observation"
+      operationId: createIssue
+      parameters:
+        - name: key
+          in: query
+          description: "Clé privé de l'utilisateur - requis si `secretid` n'est pas fourni"
+          schema:
+            type : string
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: "#/components/schemas/Observation"
+      responses:
+        "200":
+          description: "Retourne les informations d'identification de l'observation"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    description: "Token généré pour cette observation"
+                  secretid:
+                    type: string
+                    description: "Clé secrete pour cette observation"
+
+components:
+  schemas:
+    Observation:
+      type: object
+      description: "Observation"
+      properties:
+        token:
+          type: string
+          description: "Token de l'observation - Requis en cas de modification"
+        coordinate_lat:
+          type: string
+          description: "Latitude de l'observation en dégré décimal"
+          example: "1.00023"
+        coordinate_lon:
+          type: string
+          description: "Longitude de l'observation en dégré décimal"
+        address:
+          type: string
+          description: "Adresse de l'observation"
+        comment:
+          type: string
+          description: "Remarque de l'observation"
+        explanation:
+          type: string
+          description: "Explications de l'observation"
+        time:
+          type: integer
+          description: "Timestamp (en secondes) de l'observation"
+        status:
+          $ref: '#/components/schemas/ObservationStatus'
+        categorie:
+          type: integer
+          description: "Identifiant de catégorie de l'obseration"
+        approved:
+          type: integer
+          description: "Etat d'approbation de l'observation"
+        cityname:
+          type: integer
+          description: "Nom de la ville (si existe, n'est pas affiché dans l'adresse)"
+      required:
+        - coordinate_lat
+        - coordinates_lon
+        - categorie
+        - address
+        - time
+        - version
+        - scope
+        - cityid
+        - cityname
+
+    ObservationStatus:
+      type: integer
+      description: >
+            Statut de l'observation
+             * 0: Nouvelle observation
+             * 1: résolue
+             * 2: prise en compte
+             * 3: en cours de résolution
+             * 4 : indiquée comme résolue
+      enum: [0, 1, 2, 3,4]
+
+    Scope:
+      type: object
+      description: "Un scope va correspondre à une région géographique (ville ou communauté d'agglomération)"
+      properties:
+        display_name:
+          type: string
+          description: "Nom affiché du scope dans Vigilo"
+        coordinate_lat_min:
+          type: string
+          description: "Latitude minimum de la zone en dégré décimal"
+        coordinate_lat_max:
+          type: string
+          description: "Latitude maximum de la zone en dégré décimal"
+        coordinate_lon_min:
+          type: string
+          description: "Longitude minimum de la zone en dégré décimal"
+        coordinate_lon_max:
+          type: string
+          description: "Longitude maximum de la zone en dégré décimal"
+        map_center_string:
+          type: string
+          description: "Latitude,Longitude du centre de la carte qui doit être affichée"
+        map_zoom:
+          type: integer
+          description: "Zoom de la carte à afficher"
+        contact_email:
+          type: string
+          description: "Adresse mail de contact du scope"
+        tweet_content:
+          type: string
+          description: "Contenu du tweet qui mis par défaut via le composant de partage de l'application"
+        map_url:
+          type: string
+          description: "Adresse de la carte où sont affichées les observations"
+        nominatim_urlbase:
+          type: string
+          description: "URL base du service nominatim"
+        backend_version:
+          type: string
+          description: "Version du backend"
+      required:  
+        - display_name
+        - coordinate_lat_min
+        - coordinate_lat_max
+        - coordinate_lon_min
+        - coordinate_lon_max
+        - map_center_string
+        - map_zoom
